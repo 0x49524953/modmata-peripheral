@@ -1,0 +1,87 @@
+# Syntax Coloring Map
+
+# From 'registers.h'
+Register                    KEYWORD1
+RegisterArray               KEYWORD1
+address                     KEYWORD1
+value                       KEYWORD1
+getRegisterPtr              KEYWORD2
+getRegisterIndex            KEYWORD2
+getRegisterVal              KEYWORD2
+registerExists              KEYWORD2
+setRegister                 KEYWORD2
+sort                        KEYWORD2
+swapByAddr                  KEYWORD2
+addRegister                 KEYWORD2
+delRegister                 KEYWORD2
+
+# From 'etc.h'
+bswap16                     KEYWORD2
+crc16                       KEYWORD2
+exceptionCodeArray          KEYWORD2
+functionAvailable           KEYWORD2
+
+# From "Modbus.h"
+FunctionStruct              KEYWORD1
+dataLen                     KEYWORD1
+functionCode                KEYWORD1
+functionData                KEYWORD1
+MultiRead                   KEYWORD1
+valuesLen                   KEYWORD1
+initialAddress              KEYWORD1
+numAddresses                KEYWORD1
+values                      KEYWORD1
+ModmataPeripheral           KEYWORD1
+ReadCoil                    KEYWORD2
+ReadCoils                   KEYWORD2
+ReadDiscrete                KEYWORD2
+ReadDiscretes               KEYWORD2
+ReadHolding                 KEYWORD2
+ReadHoldings                KEYWORD2
+ReadInput                   KEYWORD2
+ReadInputs                  KEYWORD2
+WriteCoil                   KEYWORD2
+WriteCoils                  KEYWORD2
+WriteHolding                KEYWORD2
+WriteHoldings               KEYWORD2
+rangeToByte                 KEYWORD2
+makeException               KEYWORD2
+
+# From "ModbusSerial.h"
+RX_STATE                    LITERAL1
+STATE_RXERROR               LITERAL1
+STATE_BADCRC                LITERAL1
+STATE_NOTRECIPIENT          LITERAL1
+STATE_BADFUNCTION           LITERAL1
+STATE_TIMEOUT               LITERAL1
+STATE_BROADCAST             LITERAL1
+STATE_NORMAL                LITERAL1
+PDU                         KEYWORD1
+CODE                        KEYWORD1
+DATA                        KEYWORD1
+LEN                         KEYWORD1
+RequestPDU                  KEYWORD1
+ResponsePDU                 KEYWORD1
+ExceptionPDU                KEYWORD1
+RTU_ADU                     KEYWORD1
+address                     KEYWORD1
+pdu                         KEYWORD1
+allocateGivenDataLen        KEYWORD2
+checkCRC                    KEYWORD2
+update                      KEYWORD2
+SerialModmata               KEYWORD1
+serialStream                KEYWORD1
+serialFormat                KEYWORD1
+serialBaudRate              KEYWORD1
+peripheralId                KEYWORD1
+currentPacket               KEYWORD1
+config                      KEYWORD2
+setID                       KEYWORD2
+getID                       KEYWORD2
+setFormat                   KEYWORD2
+getFormat                   KEYWORD2
+setBaud                     KEYWORD2
+getBaud                     KEYWORD2
+setStream                   KEYWORD2
+rxADU                       KEYWORD2
+txADU                       KEYWORD2

@@ -6,13 +6,6 @@
 #ifndef ETC_H
 #define ETC_H
 
-static const uint16_t uint16_FROM_uint8_ptr(const uint8_t * ptr) {
-    // Warning: don't use this unless you know what you're doing
-    // if ptr does not ref a section of memory where there are at
-    // least two bytes allocated for it, it *will* segfault
-    return *(uint16_t *)(ptr);
-}
-
 static inline const uint16_t bswap16(const uint16_t w) {
     // GCC extended inline ARM assembly snippet for swapping the bytes of 
     // a word without using additional registers :3
@@ -38,6 +31,18 @@ static inline const uint16_t crc16(const uint8_t * data, const size_t len) {
     }
 
     return crc;
+}
+
+static inline const uint8_t * exceptionCodeArray(uint8_t value) {
+    const uint8_t array[1] = {value};
+    return array;
+}
+
+static inline const bool functionAvailable(const uint8_t code) {
+    return (
+        (code >= 0x1 && code <= 0x6) || (code == 0xF) || (code == 0x10) ||
+        (code >= 0x41 && code <= 0x48) || (code >= 0x64 && code <= 0x6e)
+    );
 }
 
 #endif

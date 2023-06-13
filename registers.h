@@ -47,9 +47,6 @@ const bool validRegister(const Register ** ref) {
 class RegisterArray {
     protected:
         // lookupTable: list of Register pointers ( no stl :c )
-        // It actually is less data rewritten per size adjustment if 
-        // we copy every register and the contents rather than every ptr
-        // (more data on AMD64) but I already rewrote it to be this way
         // sizeof(Register) = 4 bytes
         // sizeof(Register*) = 2 bytes
         // On AMD64: sizeof(Register*) = 8 bytes
@@ -92,24 +89,33 @@ class RegisterArray {
         }
 
         const uint16_t getRegisterVal(const uint16_t address) const {
-            const Register ** _temp = getRegisterPtr(address);
-            if (validRegister(_temp)) return (*_temp)->value;
+            if (this->registerExists(address)) return (**getRegisterPtr(address)).value;
             else return 0;
         }
 
         const bool registerExists(const uint16_t address) const {
-            return validRegister(getRegisterPtr(address));
+            return getRegisterIndex(address) >= 0 ? true : false;
         }
 
         const void setRegister(const uint16_t address, const uint16_t value) {
             Register ** _temp = getRegisterPtr(address);
-            if (validRegister(_temp)) (*_temp)->value = value;
+            if (validRegister(_temp)) (**_temp).value = value;
         }
 
         const void sort() {
             // Sort using the AVR libc qsort
             if (lookupTable != nullptr && tableSize > 1)
                 qsort(lookupTable, tableSize, sizeof(Register*), _qsort_addr_comparator);
+        }
+
+        const void swapByAddr(const uint16_t address0, const uint16_t address1) {
+            // Swap values of registers at address0 and address1
+            Register ** ptr0 = getRegisterPtr(address0);
+            Register ** ptr1 = getRegisterPtr(address1);
+            if (ptr0 != nullptr && ptr1 != nullptr) {
+                // I am so fucking sorry for using XOR swap
+                (*ptr0)->value ^= (*ptr1)->value ^= (*ptr0)->value ^= (*ptr1)->value;
+            }
         }
 
         const void addRegister(const uint16_t address, const uint16_t initial_value=0) {
@@ -132,16 +138,6 @@ class RegisterArray {
                 lookupTable[tableSize] = _allocateRegister(address, initial_value);
                 tableSize++;
                 this->sort();
-            }
-        }
-
-        const void swapByAddr(const uint16_t address0, const uint16_t address1) {
-            // Swap values of registers at address0 and address1
-            Register ** ptr0 = getRegisterPtr(address0);
-            Register ** ptr1 = getRegisterPtr(address1);
-            if (ptr0 != nullptr && ptr1 != nullptr) {
-                // I am so fucking sorry for using XOR swap
-                (*ptr0)->value ^= (*ptr1)->value ^= (*ptr0)->value ^= (*ptr1)->value;
             }
         }
 
@@ -174,6 +170,87 @@ class RegisterArray {
             // no need to sort elements that have not changed order relative to deleted register
         }
 
+        #ifdef EXPOSE_TESTS
+        Register ** exposeTable() { return lookupTable; }
+        const size_t exposeTableSize() { return tableSize; }
+        #endif
+
 };
 
-#endif
+#ifdef EXPOSE_TESTS
+const void test() {
+    while (!Serial);
+    delay(2);
+
+    RegisterArray table;
+
+    // Insert in reverse order to an empty table
+    // Uses: _genTableOfLen, _allocateRegister, sort, _qsort_addr_comparator
+    table.addRegister(5,5);
+    table.addRegister(4,4);
+    table.addRegister(3,3);
+    table.addRegister(2,2);
+    table.addRegister(1,1);
+
+    // Set register vals to address * 11
+    // Uses: setRegister, getRegisterPtr, validRegister, registerExists
+    for (unsigned int i=0; i < 5; i++) {
+        if (table.registerExists(i+1))
+            table.setRegister(i+1, (i+1)*11);
+    }
+
+
+    // Swap values
+    // Uses: swapByAddr, _bsearch_addr_comparator
+    table.swapByAddr(1, 5);
+    table.swapByAddr(2, 4);
+
+    // Loop through table deleting values
+    // Uses: getRegisterIndex, delRegister, getRegisterVal
+    for (unsigned int i=0; i < 5; i++) {
+        for (unsigned int j=0; j < table.exposeTableSize(); j++) {
+            Register ** tr = table.exposeTable()+j;
+            const uint16_t registerVal = table.getRegisterVal((**tr).address);
+
+            Serial.print("Index ");
+            Serial.print(j, DEC);
+            Serial.print(" gives 0x");
+            Serial.print((unsigned long)tr, HEX);
+            Serial.print(" points to 0x");
+            Serial.print((unsigned long)*tr, HEX);
+            Serial.print(" points to Register Address ");
+            Serial.print((*tr)->address, DEC);
+            Serial.print(" with value ");
+            Serial.print((*tr)->value, DEC);
+            Serial.print(":");
+            Serial.println(registerVal, DEC);
+        }
+
+        table.delRegister(i+1);
+        Serial.println("");
+    }
+
+    // End result should look like this:
+    //  Index 0 gives 0x205 points to 0x1FF points to Register Address 1 with value 55:55
+    //  Index 1 gives 0x207 points to 0x1F3 points to Register Address 2 with value 44:44
+    //  Index 2 gives 0x209 points to 0x1E7 points to Register Address 3 with value 33:33
+    //  Index 3 gives 0x20B points to 0x1ED points to Register Address 4 with value 22:22
+    //  Index 4 gives 0x20D points to 0x1E1 points to Register Address 5 with value 11:11
+    //
+    //  Index 0 gives 0x211 points to 0x1F3 points to Register Address 2 with value 44:44
+    //  Index 1 gives 0x213 points to 0x1E7 points to Register Address 3 with value 33:33
+    //  Index 2 gives 0x215 points to 0x1ED points to Register Address 4 with value 22:22
+    //  Index 3 gives 0x217 points to 0x1E1 points to Register Address 5 with value 11:11
+    //
+    //  Index 0 gives 0x209 points to 0x1E7 points to Register Address 3 with value 33:33
+    //  Index 1 gives 0x20B points to 0x1ED points to Register Address 4 with value 22:22
+    //  Index 2 gives 0x20D points to 0x1E1 points to Register Address 5 with value 11:11
+    //
+    //  Index 0 gives 0x203 points to 0x1ED points to Register Address 4 with value 22:22
+    //  Index 1 gives 0x205 points to 0x1E1 points to Register Address 5 with value 11:11
+    //
+    //  Index 0 gives 0x1DD points to 0x1E1 points to Register Address 5 with value 11:11
+}
+#endif // RUN_TESTS
+
+#endif // REGISTERS_H
