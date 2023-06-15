@@ -39,10 +39,16 @@ static inline const uint8_t * exceptionCodeArray(uint8_t value) {
 }
 
 static inline const bool functionAvailable(const uint8_t code) {
+    // this prob wont stay in the code
     return (
         (code >= 0x1 && code <= 0x6) || (code == 0xF) || (code == 0x10) ||
         (code >= 0x41 && code <= 0x48) || (code >= 0x64 && code <= 0x6e)
     );
+}
+
+static inline uint8_t * wordToBytes(const uint16_t w) {
+    uint8_t array[2] = {lowByte(w), highByte(w)};
+    return array;
 }
 
 #endif

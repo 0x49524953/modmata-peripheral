@@ -100,6 +100,14 @@ class RegisterArray {
         const void setRegister(const uint16_t address, const uint16_t value) {
             Register ** _temp = getRegisterPtr(address);
             if (validRegister(_temp)) (**_temp).value = value;
+            else addRegister(address, value);
+        }
+
+        const bool verifySetRegister(const uint16_t address, const uint16_t value) {
+            this->setRegister(address, value);
+            const Register ** r = this->getRegisterPtr(address);
+            if (validRegister(r)) return (**r).value == value;
+            else return false;
         }
 
         const void sort() {
