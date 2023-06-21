@@ -51,4 +51,10 @@ static inline uint8_t * wordToBytes(const uint16_t w) {
     return array;
 }
 
+static inline const uint16_t wordAtOffset(const uint8_t * data, const unsigned int index) {
+    // sizeof(data) >= 2 or else things break
+    // equiv of ```makeWord(data[index], data[index+1])```, but without the bitshifting (just pointer arithmetic)
+    return *(uint16_t *)(data + index);
+}
+
 #endif

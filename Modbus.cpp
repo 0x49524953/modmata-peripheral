@@ -136,7 +136,7 @@ const FunctionStruct& ModmataPeripheral::WriteHoldings(const uint16_t address, c
     if (ILLEGAL_ADDRESS) return makeException(MB_FC_WRITE_HOLDINGS, MB_EX_ILLEGAL_ADDRESS);
 
     for (int i=0; i < amount; i++) {
-        const bool REGISTER_SET = table.verifySetRegister(address + i + 1, values[i]);
+        const bool REGISTER_SET = table.verifySetRegister(address + i + 1, bswap16(values[i]));
         if (!REGISTER_SET) DEVICE_FAIL = true;
     }
 
@@ -144,3 +144,50 @@ const FunctionStruct& ModmataPeripheral::WriteHoldings(const uint16_t address, c
 
     return FunctionStruct{(size_t)2u, MB_FC_WRITE_HOLDINGS, wordToBytes(amount)};
 }
+
+const FunctionStruct& ModmataPeripheral::PinMode(const uint8_t pin, uint8_t mode) {
+    const bool ILLEGAL_VALUE = (mode != INPUT && mode != INPUT_PULLUP && mode != OUTPUT);
+    
+    if (ILLEGAL_VALUE) return makeException(MB_FC_PINMODE, MB_EX_ILLEGAL_VALUE);
+
+    pinMode(pin, mode);
+
+    return FunctionStruct{(size_t)1u, MB_FC_PINMODE, (uint8_t *)(&pin)};
+}
+
+const FunctionStruct& ModmataPeripheral::DigitalRead(const uint8_t pin) const {
+    const uint16_t val = (0xFF00 * digitalRead(pin));
+
+    return FunctionStruct{(size_t)2u, MB_FC_DIGITAL_READ, wordToBytes(val)};
+}
+
+const FunctionStruct& ModmataPeripheral::AnalogRead(const uint8_t pin) const {
+    const uint16_t val = analogRead(pin);
+
+    return FunctionStruct{(size_t)2u, MB_FC_ANALOG_READ, wordToBytes(val)};
+}
+
+const FunctionStruct& ModmataPeripheral::DigitalWrite(const uint8_t pin, const uint8_t value) {
+    const bool ILLEGAL_VALUE = (value != HIGH && value != LOW);
+    const bool ILLEGAL_ADDRESS = (digitalPinToPort(pin) == NOT_A_PIN);
+
+    if (ILLEGAL_VALUE) return makeException(MB_FC_DIGITAL_WRITE, MB_EX_ILLEGAL_VALUE);
+    if (ILLEGAL_ADDRESS) return makeException(MB_FC_DIGITAL_WRITE, MB_EX_ILLEGAL_ADDRESS);
+
+    digitalWrite(pin, value);
+
+    return FunctionStruct{(size_t)2u, MB_FC_DIGITAL_WRITE, wordToBytes(makeWord(pin, value))};
+}
+
+const FunctionStruct& ModmataPeripheral::AnalogWrite(const uint8_t pin, const uint16_t value) {
+    const bool ILLEGAL_ADDRESS = (pin == NOT_A_PIN);
+
+    if (ILLEGAL_ADDRESS) return makeException(MB_FC_ANALOG_WRITE, MB_EX_ILLEGAL_ADDRESS);
+
+    analogWrite(pin, (int)value);
+
+    uint8_t array[] = {pin, lowByte(value), highByte(value)}; // I think this is the low-high byte order?
+
+    return FunctionStruct{(size_t)3u, MB_FC_ANALOG_WRITE, array};
+}
+

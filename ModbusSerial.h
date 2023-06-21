@@ -16,33 +16,37 @@
 #include <SoftwareSerial.h>
 #endif
 
-const enum RX_STATE {
-    STATE_RXERROR = 0,
-    STATE_BADCRC = 1,
-    STATE_NOTRECIPIENT = 2,
-    STATE_BADFUNCTION = 3,
-    STATE_TIMEOUT = 4,
-    STATE_BROADCAST = 5,
-    STATE_NORMAL = 6,
+enum RX_STATE {
+    STATE_RXERROR = 1,
+    STATE_BADCRC = 2,
+    STATE_NOTRECIPIENT = 3,
+    STATE_BADFUNCTION = 4,
+    STATE_TIMEOUT = 5,
+    STATE_BROADCAST = 6,
+    STATE_NORMAL = 7,
 };
 
 typedef struct PDU {
-    uint8_t     CODE;
-    uint8_t *   DATA;   // DO NOT calloc/malloc() FOR THIS!
-    size_t      LEN;
-};
+    uint8_t     CODE = 0;
+    uint8_t *   DATA = nullptr;   // DO NOT calloc/malloc() FOR THIS!
+    size_t      LEN  = 0;
 
-typedef struct RequestPDU : public PDU {
-    const void use_crc_struct(const uint8_t * crcstruct, const size_t size) {
-        CODE = crcstruct[1];
-        LEN = size - sizeof(uint8_t) - sizeof(uint8_t) - sizeof(uint16_t);
-                     // address         function code           CRC
-        DATA = (uint8_t *)(crcstruct) + 2;
+    PDU() {}
+
+    PDU(const uint8_t func, const uint8_t except) {
+        uint8_t exc_array[1] = {except};   
+        CODE = func + 0x80;
+        DATA = exc_array;
+        LEN = 1u;
     }
-};
 
-typedef struct ResponsePDU : public PDU {};
-typedef struct ExceptionPDU : public PDU {};
+    const void use_crc_struct(uint8_t * crc_struct, const size_t len) {
+        CODE = crc_struct[1];
+        DATA = crc_struct + 2;
+        LEN = len;
+    }
+
+};
 
 
 class RTU_ADU {
@@ -67,48 +71,47 @@ class RTU_ADU {
      */
 
     public:
-        uint8_t * _crc_struct = nullptr;
+        uint8_t * data =        nullptr;
+        uint8_t * crc_struct =  nullptr;
+        uint8_t * address =     nullptr;
         uint16_t * crc =        nullptr;
-        size_t _crc_size =      0;
+        size_t len =            0u;
+        size_t crc_struct_len = 0u;
 
-        uint8_t address;
-        RequestPDU pdu;
+        PDU pdu = PDU();
+
+        const size_t allocateGivenDataLen(const size_t len) {
+            // calloc() helper
+            this->len = len;
+            this->crc_struct_len = len - 2;
+            data = (uint8_t *)calloc(len, sizeof(uint8_t));
+            crc_struct = data;
+            address = data;
+            crc = (uint16_t *)(data + (len-2));
+            return len-2;
+        }
 
         RTU_ADU() {}
-
-        RTU_ADU(const size_t len) {
-            _crc_size = this->allocateGivenDataLen(len);
-        }
 
         RTU_ADU(const uint8_t * d, const size_t len) {
             // ADU constructor for a 'len' byte long byte-array starting at 'd'
             // 01 04 02 FF FF B8 80
             // 0  1  2  3  4  5  6 ... 7 bytes long
             // +0 +1 +2 +3 +4 +5 +6
-            _crc_size = this->allocateGivenDataLen(len);
-            memcpy(_crc_struct, d, _crc_size);
-            memcpy((uint8_t *)crc, d+_crc_size, 2);
-            
-            address = _crc_struct[0];
-            pdu.use_crc_struct(_crc_struct, _crc_size);
-        }
-            
-        const size_t allocateGivenDataLen(const size_t len) {
-            // calloc() helper
-            crc = (uint16_t *)calloc(1, sizeof(uint16_t));
-            _crc_struct = (uint8_t *)calloc(len-2, sizeof(uint8_t));
-            return len-2;
+            this->allocateGivenDataLen(len);
+            memcpy(data, d, len);
+            pdu.use_crc_struct(data, len);
         }
 
         ~RTU_ADU() {
-            if (_crc_struct != nullptr) free(_crc_struct);
-            if (crc != nullptr) free(crc);
-            _crc_struct = nullptr;
+            if (data != nullptr) free(data);
+            crc_struct = nullptr;
+            address = nullptr;
             crc = nullptr;
 
-            _crc_size = 0U;
-            address = 0U;
-            pdu = RequestPDU();
+            len = 0U;
+            crc_struct_len = 0u;
+            pdu = PDU();
         }
 
         const RTU_ADU& operator= (const RTU_ADU& assign) {
@@ -119,9 +122,10 @@ class RTU_ADU {
 
             if (this != &assign) {
                 this->~RTU_ADU();
-                _crc_size =   this->allocateGivenDataLen(assign._crc_size+2);
-                memcpy(_crc_struct, assign._crc_struct, assign._crc_size);
-                *(crc) = *(assign.crc);
+                this->len = assign.len;
+                this->crc_struct_len = assign.crc_struct_len;
+                memcpy(data, assign.data, len);
+
                 this->update();
             }
 
@@ -130,38 +134,45 @@ class RTU_ADU {
 
         RTU_ADU(const RTU_ADU& copy) {
             this->~RTU_ADU();
-            _crc_size = this->allocateGivenDataLen(copy._crc_size+2);
-            memcpy(_crc_struct, copy._crc_struct, copy._crc_size);
-            *(crc) = *(copy.crc);
+            this->len = copy.len;
+            this->crc_struct_len = copy.crc_struct_len;
+            memcpy(data, copy.data, copy.len);
             this->update();
         }
 
         const bool checkCRC() const {
-            return (*crc) == crc16(_crc_struct, _crc_size);
+            return (*crc) == crc16(crc_struct, crc_struct_len);
         }
 
         const void update() {
-            address = _crc_struct[0];
-            pdu.use_crc_struct(_crc_struct, _crc_size);
+            crc_struct = data;
+            crc_struct_len = len - 2;
+            address = data;
+            crc = (uint16_t *)(data + (len - 2));
+
+            pdu.use_crc_struct(crc_struct, crc_struct_len);
         }
 };
 
 class SerialModmata : public ModmataPeripheral {
     protected:
-        Stream& serialStream = Serial;
+        Stream& serialStream;
         unsigned int serialFormat;
         unsigned long serialBaudRate;
-        // do we need a tx pin?
+        unsigned long serialTimeout = 1000;
+
+        unsigned long _t = 0;
+        // do we need a tx pin for other boards?
+
+        RX_STATE packetState;
 
     public:
         uint8_t peripheralId;
         RTU_ADU currentPacket;
 
-        // This is being pissy
-        SerialModmata(Stream& stream, unsigned long baud, unsigned int fmt) {
-            this->serialStream = stream; // <- pisser
-            this->serialBaudRate = baud;
-            this->serialFormat = fmt;
+        SerialModmata(Stream& stream, unsigned long baud, unsigned int fmt) : serialStream(stream) {
+            serialBaudRate = baud;
+            serialFormat = fmt;
         };
 
         const bool          config(Stream& stream, unsigned long baud, unsigned int fmt);
@@ -173,10 +184,12 @@ class SerialModmata : public ModmataPeripheral {
         const unsigned long getBaud() { return serialBaudRate; }
         const void          setStream(Stream& stream) { serialStream = stream; }
 
-        const PDU& execute();
-        const RX_STATE rxADU(unsigned int timeout=0);
-        const bool txADU();
-        const void runOnce();
+        const void startTimer() {_t = millis();}
+        const bool timedOut() {return millis() - _t < serialTimeout;}
+
+        const FunctionStruct& execute();
+        const RX_STATE rxADU();
+        //const bool txADU(const PDU_TYPE t); // (working on this)
 };
 
 #endif // MODBUSSERIAL_H

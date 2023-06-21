@@ -2,7 +2,7 @@
 #define CONSTANTS_H
 
 // Function Codes
-const enum FUNCTIONS {
+enum FUNCTIONS {
     MB_FC_READ_COILS            = 0x01, // Read Coils (Output) Status           0xxxx
     MB_FC_READ_DISCRETES        = 0x02, // Read Input Status (Discrete Inputs)  1xxxx
     MB_FC_READ_HOLDINGS         = 0x03, // Read Holding Registers               4xxxx
@@ -41,7 +41,7 @@ const enum FUNCTIONS {
 };
 
 // Exception Codes
-const enum EXCEPTIONS {
+enum EXCEPTIONS {
     MB_EX_ILLEGAL_FUNCTION = 0x01,  // Function Code Not Supported
     MB_EX_ILLEGAL_ADDRESS  = 0x02,  // Given Address Not In Acceptable Range
     MB_EX_ILLEGAL_VALUE    = 0x03,  // Given Value Not In Acceptable Range
@@ -49,14 +49,14 @@ const enum EXCEPTIONS {
 };
 
 // Reply Types
-const enum REPLY_T {
+enum REPLY_T {
     MB_REPLY_OFF    = 0x01,
     MB_REPLY_ECHO   = 0x02,
     MB_REPLY_NORMAL = 0x03,
 };
 
 // Register Types
-const enum REGISTER_T {
+enum REGISTER_T {
     MB_REGISTER_COIL =      0x1,
     MB_REGISTER_DISCRETE =  0x2,
     MB_REGISTER_INPUT =     0x3,

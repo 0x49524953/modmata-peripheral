@@ -4,8 +4,12 @@
 */
 
 #include "Arduino.h"
+
+// If you want to use different I2C/SPI libraries, you may replace these
+// headers as long as it has drop-in replacement compatability
 #include <Wire.h>
 #include <SPI.h>
+//        ^^^^-- these 
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -23,27 +27,40 @@
 // ???
 #define MAX_REGS     32
 #define MAX_FRAME   128
+
 //#define USE_HOLDING_REGISTERS_ONLY
+
 
 typedef struct FunctionStruct {
     // Bare minimum data structure that applies to all Modbus ADU/PDU variants
     size_t      dataLen;
     uint8_t     functionCode;
     uint8_t *   functionData;
+    
+    FunctionStruct() {
+        dataLen = 0;
+        functionCode = 0;
+        functionData = nullptr;
+    }
+
+    FunctionStruct(const size_t len, const uint8_t fc, uint8_t * data) {
+        dataLen = len;
+        functionCode = fc;
+        functionData = data;
+    }
 };
 
 
-typedef struct MultiRead {
-    size_t      valuesLen;
-    uint16_t    initialAddress;
-    uint16_t    numAddresses;
-    uint16_t *  values;
+enum I2C_MODE {
+    MODE_CONTROLLER = 1u,
+    MODE_PERIPHERAL = 2u
 };
 
 
 class ModmataPeripheral {
     public:
         RegisterArray   table;
+        SPISettings     spi_settings;
 
         ModmataPeripheral() {}
 
@@ -64,18 +81,11 @@ class ModmataPeripheral {
         const FunctionStruct& WriteHoldings(    const uint16_t address, const uint16_t amount, const uint16_t * values);
 
         // Extended functions
-
-        virtual const void  WireBeginPeripheral(uint8_t address);
-        virtual const void  WireBeginController();
-        virtual const void  WireClock(uint32_t clock);
-        virtual const void  WireRead() {};
-        virtual const void  WireWrite() {};
-        virtual const void  WireEnd() {};
-
-        virtual const void  SPIbegin() {};
-        virtual const void  SPIsettings() {};
-        virtual const void  SPItransfer() {};
-        virtual const void  SPIend() {};
+        const FunctionStruct& PinMode(          const uint8_t pin, const uint8_t mode);
+        const FunctionStruct& DigitalRead(      const uint8_t pin) const;
+        const FunctionStruct& AnalogRead(       const uint8_t pin) const;
+        const FunctionStruct& DigitalWrite(     const uint8_t pin, const uint8_t value);
+        const FunctionStruct& AnalogWrite(      const uint8_t pin, const uint16_t value);
 
     protected:
 
