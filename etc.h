@@ -38,14 +38,6 @@ static inline const uint8_t * exceptionCodeArray(uint8_t value) {
     return array;
 }
 
-static inline const bool functionAvailable(const uint8_t code) {
-    // this prob wont stay in the code
-    return (
-        (code >= 0x1 && code <= 0x6) || (code == 0xF) || (code == 0x10) ||
-        (code >= 0x41 && code <= 0x48) || (code >= 0x64 && code <= 0x6e)
-    );
-}
-
 static inline uint8_t * wordToBytes(const uint16_t w) {
     uint8_t array[2] = {lowByte(w), highByte(w)};
     return array;
@@ -55,6 +47,25 @@ static inline const uint16_t wordAtOffset(const uint8_t * data, const unsigned i
     // sizeof(data) >= 2 or else things break
     // equiv of ```makeWord(data[index], data[index+1])```, but without the bitshifting (just pointer arithmetic)
     return *(uint16_t *)(data + index);
+}
+
+static inline const uint8_t reverseBits(const uint8_t b) {
+    uint8_t p = ((b & 0xaa) >> 1) | ((b & 0x55) << 1);
+    p = ((p & 0xcc) >> 2) | ((p & 0x33) << 2);
+    p = ((p & 0xf0) >> 4) | ((p & 0x0f) << 4);
+    return p;
+}
+
+static const void printBytes(const uint8_t * b, size_t l) {
+  for (int i = 0; i < l; i++) {
+    Serial.print(b[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println("");
+}
+
+static inline const uint8_t boolsToByte(const bool a[]) {
+    return 0x80 * a[0] | 0x40 * a[1] | 0x20 * a[2] | 0x10 * a[3] | 0x8 * a[4] | 0x4 * a[5] | 0x2 * a[6] | 0x1 * a[7];
 }
 
 #endif

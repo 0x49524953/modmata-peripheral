@@ -11,7 +11,7 @@ typedef struct Register {
 };
 
 // Comparator function for binary searching
-int _bsearch_addr_comparator(const void * addr, const void * reg) {
+static int _bsearch_addr_comparator(const void * addr, const void * reg) {
     return int(*(const uint16_t *)addr) - int((*(const Register **)reg)->address);
     // ( addr < reg.addr : ret -n)
     // ( addr > reg.addr : ret +n )
@@ -19,7 +19,7 @@ int _bsearch_addr_comparator(const void * addr, const void * reg) {
 }
 
 // Comparator function for qsort
-int _qsort_addr_comparator(const void * reg0, const void * reg1) {
+static int _qsort_addr_comparator(const void * reg0, const void * reg1) {
     return int((*(const Register **)reg0)->address) - int((*(const Register **)reg1)->address);
     // ( reg0->addr < reg1->addr : ret -n)
     // ( reg0->addr > reg1->addr : ret +n )
@@ -27,18 +27,18 @@ int _qsort_addr_comparator(const void * reg0, const void * reg1) {
 }
 
 // Helper function for calloc() calls
-Register ** _genTableOfLen(const uint16_t len) {
+static Register ** _genTableOfLen(const uint16_t len) {
     return (Register **)calloc(size_t(len), sizeof(Register*));
 }
 
-Register * _allocateRegister(uint16_t address=0, uint16_t value=0) {
+static Register * _allocateRegister(uint16_t address=0, uint16_t value=0) {
     Register * _temp = (Register*)malloc(sizeof(Register));
     _temp->address = address;
     _temp->value = value;
     return _temp;
 }
 
-const bool validRegister(const Register ** ref) {
+static const bool validRegister(const Register ** ref) {
     return ref != NULL && *ref != NULL;
 }
 
@@ -90,7 +90,7 @@ class RegisterArray {
 
         const uint16_t getRegisterVal(const uint16_t address) const {
             if (this->registerExists(address)) return (**getRegisterPtr(address)).value;
-            else return 0;
+            else return 0u;
         }
 
         const bool registerExists(const uint16_t address) const {
@@ -183,6 +183,15 @@ class RegisterArray {
         const size_t exposeTableSize() { return tableSize; }
         #endif
 
+        const void printRegisters() const {
+            for (int i = 0; i < tableSize; i++) {
+                Register r = *lookupTable[i];
+                Serial.print("Address: ");
+                Serial.print(r.address);
+                Serial.print(" Value: ");
+                Serial.println(r.value, HEX);
+            }
+        }
 };
 
 #ifdef EXPOSE_TESTS
